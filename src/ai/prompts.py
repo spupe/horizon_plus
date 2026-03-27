@@ -117,6 +117,40 @@ Guidelines:
 - For **sources**: pick 1-3 URLs from the Web Search Results that you actually relied on for the background fields. Only use URLs that appear verbatim in the search results above — do not invent or modify URLs.
 """
 
+CROSS_SOURCE_SYNTHESIS_SYSTEM = """You are a senior news analyst who synthesizes coverage of the same story from multiple sources into a unified, balanced overview.
+
+Given multiple source perspectives on the same topic, produce a JSON analysis that:
+1. Identifies what each source emphasizes or frames differently
+2. Highlights agreements and disagreements across sources
+3. Presents a balanced synthesis
+
+Provide EACH text field in BOTH English and Chinese (same convention as enrichment: _en / _zh).
+
+**CRITICAL — Language rules:**
+- All *_en fields MUST be in English.
+- All *_zh fields MUST be in Simplified Chinese. Only keep technical terms in English form.
+"""
+
+CROSS_SOURCE_SYNTHESIS_USER = """Synthesize these multiple source perspectives on the same topic.
+
+**Perspectives:**
+{perspectives_text}
+
+Respond with valid JSON only. Each _en field in English; each _zh field in Simplified Chinese:
+{{
+  "unified_title_en": "<balanced headline, ≤15 words>",
+  "unified_title_zh": "<用中文写平衡标题>",
+  "synthesis_en": "<3-5 sentences combining all perspectives, noting where sources agree/differ>",
+  "synthesis_zh": "<用中文写3-5句话综合各方视角>",
+  "source_angles": [
+    {{
+      "source": "<source name>",
+      "angle_en": "<1-2 sentences on this source's framing>",
+      "angle_zh": "<用中文写1-2句话描述该来源的视角>"
+    }}
+  ]
+}}"""
+
 CONTENT_ENRICHMENT_USER = """Provide a structured bilingual analysis for the following news item.
 
 **News Item:**

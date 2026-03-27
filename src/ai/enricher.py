@@ -18,6 +18,7 @@ from .client import AIClient
 from .prompts import (
     CONCEPT_EXTRACTION_SYSTEM, CONCEPT_EXTRACTION_USER,
     CONTENT_ENRICHMENT_SYSTEM, CONTENT_ENRICHMENT_USER,
+    CROSS_SOURCE_SYNTHESIS_SYSTEM, CROSS_SOURCE_SYNTHESIS_USER,
 )
 from .utils import parse_json_response
 from ..models import ContentItem
@@ -220,3 +221,58 @@ class ContentEnricher:
         item.metadata["detailed_summary"] = item.metadata.get("detailed_summary_en", "")
         item.metadata["background"] = item.metadata.get("background_en", "")
         item.metadata["community_discussion"] = item.metadata.get("community_discussion_en", "")
+
+        # Cross-source synthesis: if this item was merged from multiple sources,
+        # generate a unified multi-perspective analysis
+        perspectives = item.metadata.get("source_perspectives", [])
+        if len(perspectives) >= 2:
+            await self._synthesize_perspectives(item, perspectives)
+
+    async def _synthesize_perspectives(
+        self, item: ContentItem, perspectives: list
+    ) -> None:
+        """Generate a cross-source synthesis for items with multiple perspectives.
+
+        Args:
+            item: Content item with merged source perspectives
+            perspectives: List of dicts with source/title/summary/url
+        """
+        # Build perspectives text block
+        parts = []
+        for p in perspectives:
+            parts.append(
+                f"**{p['source']}** ({p['source_type']})\n"
+                f"  Title: {p['title']}\n"
+                f"  Summary: {p['summary']}\n"
+                f"  URL: {p['url']}"
+            )
+        perspectives_text = "\n\n".join(parts)
+
+        user_prompt = CROSS_SOURCE_SYNTHESIS_USER.format(
+            perspectives_text=perspectives_text
+        )
+
+        try:
+            response = await self.client.complete(
+                system=CROSS_SOURCE_SYNTHESIS_SYSTEM,
+                user=user_prompt,
+                temperature=0.4,
+            )
+            result = self._parse_json_response(response)
+            if result is None:
+                print(f"Warning: could not parse synthesis response for {item.id}")
+                return
+
+            # Store synthesis results in metadata
+            for lang in ("en", "zh"):
+                if result.get(f"unified_title_{lang}"):
+                    item.metadata[f"unified_title_{lang}"] = result[f"unified_title_{lang}"]
+                if result.get(f"synthesis_{lang}"):
+                    item.metadata[f"synthesis_{lang}"] = result[f"synthesis_{lang}"]
+
+            if result.get("source_angles"):
+                item.metadata["source_angles"] = result["source_angles"]
+
+            item.metadata["is_multi_source"] = True
+        except Exception as e:
+            print(f"Error synthesizing perspectives for {item.id}: {e}")

@@ -9,6 +9,7 @@ from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
 from google import genai
 from google.genai import types
+from google.genai.errors import ClientError as GeminiClientError
 
 from ..models import AIConfig, AIProvider
 from .tokens import record_usage
@@ -308,16 +309,21 @@ class GeminiClient(AIClient):
         Returns:
             str: Generated text
         """
-        response = await self.client.aio.models.generate_content(
-            model=self.model,
-            contents=user,
-            config=types.GenerateContentConfig(
-                system_instruction=system,
-                temperature=temperature,
-                max_output_tokens=max_tokens,
-                response_mime_type="application/json"
+        try:
+            response = await self.client.aio.models.generate_content(
+                model=self.model,
+                contents=user,
+                config=types.GenerateContentConfig(
+                    system_instruction=system,
+                    temperature=temperature,
+                    max_output_tokens=max_tokens,
+                    response_mime_type="application/json"
+                )
             )
-        )
+        except GeminiClientError as e:
+            # Surface the actual error message instead of letting tenacity hide it
+            print(f"Gemini API error: {e}")
+            raise
         usage = getattr(response, "usage_metadata", None)
         if usage is not None:
             total = getattr(usage, "total_token_count", 0) or 0
