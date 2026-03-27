@@ -232,6 +232,28 @@
       ]
     },
     {
+      "id": "news",
+      "name": "News / Journalism",
+      "name_zh": "新闻 / 新闻报道",
+      "keywords": ["news", "新闻", "journalism", "world", "politics", "current events", "时事"],
+      "sources": [
+        {
+          "type": "rss",
+          "description": "Fox News — latest headlines",
+          "description_zh": "Fox News — 最新头条",
+          "tags": ["news", "us"],
+          "config": { "name": "Fox News", "url": "https://moxie.foxnews.com/google-publisher/latest.xml", "category": "news" }
+        },
+        {
+          "type": "rss",
+          "description": "The Guardian — US news",
+          "description_zh": "The Guardian — 美国新闻",
+          "tags": ["news", "us"],
+          "config": { "name": "The Guardian - US", "url": "https://www.theguardian.com/us-news/rss", "category": "news" }
+        }
+      ]
+    },
+    {
       "id": "science",
       "name": "Science / Research",
       "name_zh": "科学 / 学术研究",

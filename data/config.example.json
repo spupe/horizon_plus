@@ -49,6 +49,18 @@
         "url": "https://lwn.net/headlines/full_text?key=${LWN_KEY}",
         "enabled": false,
         "category": "linux"
+      },
+      {
+        "name": "Fox News",
+        "url": "https://moxie.foxnews.com/google-publisher/latest.xml",
+        "enabled": true,
+        "category": "news"
+      },
+      {
+        "name": "The Guardian - US",
+        "url": "https://www.theguardian.com/us-news/rss",
+        "enabled": true,
+        "category": "news"
       }
     ],
     "reddit": {
