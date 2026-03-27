@@ -1,5 +1,6 @@
 """AI client abstraction supporting multiple providers."""
 
+import asyncio
 import os
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -323,6 +324,7 @@ class GeminiClient(AIClient):
             prompt = getattr(usage, "prompt_token_count", 0) or 0
             completion = max(0, total - prompt)
             record_usage("gemini", input_tokens=prompt, output_tokens=completion)
+        await asyncio.sleep(4)  # Stay under Gemini free tier 15 RPM limit
         return response.text
 
 
