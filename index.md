@@ -3,11 +3,11 @@ layout: default
 title: Home
 ---
 
-# Horizon
+# Horizon+
 
 <div id="lang-zh" class="lang-section" markdown="1">
 
-欢迎来到 [Horizon](https://github.com/thysrael/Horizon)，一个 AI 驱动的信息聚合系统。
+欢迎来到 [Horizon+](https://github.com/spupe/horizon_plus)，一个 AI 驱动的信息聚合系统。
 
 ## 文档
 
@@ -33,7 +33,7 @@ title: Home
 
 <div id="lang-en" class="lang-section" markdown="1">
 
-Welcome to [Horizon](https://github.com/thysrael/Horizon), an AI-driven information aggregation system.
+Welcome to [Horizon+](https://github.com/spupe/horizon_plus), an AI-driven information aggregation system.
 
 ## Documentation
 
