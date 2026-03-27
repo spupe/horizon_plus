@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "uv sync --quiet 2>&1 | tail -1"
+      }
+    ]
+  }
+}
