@@ -39,7 +39,7 @@
     "hackernews": {
       "enabled": true,
       "fetch_top_stories": 10,
-      "min_score": 200
+      "min_score": 50
     },
     "rss": [
       {
@@ -57,7 +57,7 @@
       {
         "name": "LWN.net",
         "url": "https://lwn.net/headlines/full_text?key=${LWN_KEY}",
-        "enabled": true,
+        "enabled": false,
         "category": "linux-kernel"
       },
       {
@@ -74,7 +74,7 @@
       }
     ],
     "reddit": {
-      "enabled": true,
+      "enabled": false,
       "subreddits": [
         {
           "subreddit": "MachineLearning",
