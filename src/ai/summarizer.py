@@ -25,6 +25,9 @@ LABELS = {
         "discussion": "Discussion",
         "references": "References",
         "tags": "Tags",
+        "multi_source": "Multi-Source Coverage",
+        "synthesis": "Cross-Source Synthesis",
+        "perspectives": "Source Perspectives",
         "empty_body": (
             "No significant developments today. This might indicate:\n"
             "- A quiet day in your tracked sources\n"
@@ -43,6 +46,9 @@ LABELS = {
         "discussion": "社区讨论",
         "references": "参考链接",
         "tags": "标签",
+        "multi_source": "多源报道",
+        "synthesis": "跨源综合分析",
+        "perspectives": "各来源视角",
         "empty_body": (
             "今日暂无重要动态，可能原因：\n"
             "- 今天关注的信息源较平静\n"
@@ -111,11 +117,17 @@ class DailySummarizer:
 
     def _format_item(self, item: ContentItem, labels: dict, language: str, index: int) -> str:
         """Format a single ContentItem into Markdown."""
-        _title = item.metadata.get(f"title_{language}") or item.title
+        meta = item.metadata
+        is_multi = meta.get("is_multi_source", False)
+
+        # Use unified title for multi-source items if available
+        if is_multi and meta.get(f"unified_title_{language}"):
+            _title = meta[f"unified_title_{language}"]
+        else:
+            _title = meta.get(f"title_{language}") or item.title
         title = str(_title).replace("[", "(").replace("]", ")")
         url = str(item.url)
         score = item.ai_score or "?"
-        meta = item.metadata
 
         summary = (
             meta.get(f"detailed_summary_{language}")
@@ -136,28 +148,67 @@ class DailySummarizer:
             background = _pangu(background)
             discussion = _pangu(discussion)
 
-        # Source line with parts joined by " · ", link appended at end
+        # Source line
         source_type = item.source_type.value
-        source_parts = [source_type]
-        if meta.get("subreddit"):
-            source_parts.append(f"r/{meta['subreddit']}")
-        if meta.get("feed_name"):
-            source_parts.append(meta["feed_name"])
+        if is_multi:
+            perspectives = meta.get("source_perspectives", [])
+            source_names = [p["source"] for p in perspectives]
+            source_line = " \u00b7 ".join(source_names)
         else:
-            source_parts.append(item.author or "unknown")
-        if item.published_at:
-            day = item.published_at.strftime("%d").lstrip("0")
-            source_parts.append(item.published_at.strftime(f"%b {day}, %H:%M"))
-        source_line = " \u00b7 ".join(source_parts)  # ·
+            source_parts = [source_type]
+            if meta.get("subreddit"):
+                source_parts.append(f"r/{meta['subreddit']}")
+            if meta.get("feed_name"):
+                source_parts.append(meta["feed_name"])
+            else:
+                source_parts.append(item.author or "unknown")
+            if item.published_at:
+                day = item.published_at.strftime("%d").lstrip("0")
+                source_parts.append(item.published_at.strftime(f"%b {day}, %H:%M"))
+            source_line = " \u00b7 ".join(source_parts)
+
+        # Multi-source badge in header
+        header_suffix = ""
+        if is_multi:
+            header_suffix = f" \U0001f4f0 {labels['multi_source']}"
 
         lines = [
             f'<a id="item-{index}"></a>',
-            f"## [{title}]({url}) \u2b50\ufe0f {score}/10",  # ⭐️
+            f"## [{title}]({url}) \u2b50\ufe0f {score}/10{header_suffix}",
             "",
             summary,
             "",
             source_line,
         ]
+
+        # Cross-source synthesis for multi-source items
+        if is_multi:
+            synthesis = meta.get(f"synthesis_{language}") or ""
+            if language == "zh" and synthesis:
+                synthesis = _pangu(synthesis)
+            if synthesis:
+                lines.append("")
+                lines.append(f"**{labels['synthesis']}**: {synthesis}")
+
+            # Per-source angles
+            source_angles = meta.get("source_angles", [])
+            if source_angles:
+                lines.append("")
+                lines.append(f"**{labels['perspectives']}**:")
+                for angle in source_angles:
+                    angle_text = angle.get(f"angle_{language}") or angle.get("angle_en", "")
+                    if language == "zh" and angle_text:
+                        angle_text = _pangu(angle_text)
+                    if angle_text:
+                        lines.append(f"- **{angle.get('source', '?')}**: {angle_text}")
+
+            # Links to all source URLs
+            perspectives = meta.get("source_perspectives", [])
+            if len(perspectives) > 1:
+                lines.append("")
+                for p in perspectives:
+                    p_title = p.get("title", p["source"])
+                    lines.append(f"- [{p['source']}: {p_title}]({p['url']})")
 
         if background:
             lines.append("")

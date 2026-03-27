@@ -369,6 +369,7 @@ class HorizonOrchestrator:
 
         Items must already be sorted by ai_score descending.
         Content (comments) from duplicate items is merged into the primary.
+        Per-source perspectives are stored in metadata["source_perspectives"].
         """
         kept: List[ContentItem] = []
         for item in items:
@@ -390,9 +391,50 @@ class HorizonOrchestrator:
                     break
             if merged_into is not None:
                 self._merge_item_content(merged_into, item)
+                # Track per-source perspectives for cross-source synthesis
+                self._track_source_perspective(merged_into, item)
             else:
+                # Initialize source_perspectives for single-source items
+                self._init_source_perspective(item)
                 kept.append(item)
         return kept
+
+    @staticmethod
+    def _init_source_perspective(item: ContentItem) -> None:
+        """Initialize source_perspectives metadata for a new kept item."""
+        source_label = item.metadata.get("feed_name") or item.source_type.value
+        item.metadata.setdefault("source_perspectives", [
+            {
+                "source": source_label,
+                "source_type": item.source_type.value,
+                "title": item.title,
+                "url": str(item.url),
+                "summary": item.ai_summary or item.title,
+            }
+        ])
+
+    @staticmethod
+    def _track_source_perspective(primary: ContentItem, secondary: ContentItem) -> None:
+        """Add a secondary item's perspective to the primary's metadata."""
+        perspectives = primary.metadata.setdefault("source_perspectives", [])
+        # Ensure primary perspective is recorded
+        if not perspectives:
+            primary_label = primary.metadata.get("feed_name") or primary.source_type.value
+            perspectives.append({
+                "source": primary_label,
+                "source_type": primary.source_type.value,
+                "title": primary.title,
+                "url": str(primary.url),
+                "summary": primary.ai_summary or primary.title,
+            })
+        source_label = secondary.metadata.get("feed_name") or secondary.source_type.value
+        perspectives.append({
+            "source": source_label,
+            "source_type": secondary.source_type.value,
+            "title": secondary.title,
+            "url": str(secondary.url),
+            "summary": secondary.ai_summary or secondary.title,
+        })
 
     async def _enrich_important_items(self, items: List[ContentItem]) -> None:
         """Enrich items with background knowledge (2nd AI pass).
