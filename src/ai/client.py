@@ -15,6 +15,15 @@ from ..models import AIConfig, AIProvider
 from .tokens import record_usage
 
 
+class QuotaExhaustedError(RuntimeError):
+    """Raised when an API quota is permanently exhausted (limit: 0).
+
+    This error should NOT be retried — the quota won't recover without
+    billing changes or switching providers.
+    """
+    pass
+
+
 class AIClient(ABC):
     """Abstract base class for AI clients."""
 
@@ -321,6 +330,15 @@ class GeminiClient(AIClient):
                 )
             )
         except GeminiClientError as e:
+            error_msg = str(e)
+            # Detect permanent quota exhaustion (limit: 0) vs temporary rate limiting
+            if "429" in error_msg and "limit: 0" in error_msg:
+                raise QuotaExhaustedError(
+                    "Gemini API quota is permanently exhausted (limit: 0). "
+                    "Your free tier has no remaining quota. Either enable billing "
+                    "at https://console.cloud.google.com/ or switch to a different "
+                    "AI provider in data/config.json."
+                ) from e
             # Surface the actual error message instead of letting tenacity hide it
             print(f"Gemini API error: {e}")
             raise

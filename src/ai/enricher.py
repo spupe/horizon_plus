@@ -10,11 +10,11 @@ import re
 import sys
 import os
 from typing import List, Optional
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_not_exception_type, stop_after_attempt, wait_exponential
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, MofNCompleteColumn
 from ddgs import DDGS
 
-from .client import AIClient
+from .client import AIClient, QuotaExhaustedError
 from .prompts import (
     CONCEPT_EXTRACTION_SYSTEM, CONCEPT_EXTRACTION_USER,
     CONTENT_ENRICHMENT_SYSTEM, CONTENT_ENRICHMENT_USER,
@@ -117,7 +117,8 @@ class ContentEnricher:
 
     @retry(
         stop=stop_after_attempt(3),
-        wait=wait_exponential(min=2, max=10)
+        wait=wait_exponential(min=2, max=10),
+        retry=retry_if_not_exception_type(QuotaExhaustedError),
     )
     async def _enrich_item(self, item: ContentItem) -> None:
         """Enrich a single item with background knowledge.
