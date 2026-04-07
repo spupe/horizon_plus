@@ -3,10 +3,10 @@
 import json
 import re
 from typing import List, Optional
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_not_exception_type, stop_after_attempt, wait_exponential
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, MofNCompleteColumn
 
-from .client import AIClient
+from .client import AIClient, QuotaExhaustedError
 from .prompts import CONTENT_ANALYSIS_SYSTEM, CONTENT_ANALYSIS_USER
 from .utils import parse_json_response
 from ..models import ContentItem
@@ -60,7 +60,8 @@ class ContentAnalyzer:
 
     @retry(
         stop=stop_after_attempt(3),
-        wait=wait_exponential(min=2, max=10)
+        wait=wait_exponential(min=2, max=10),
+        retry=retry_if_not_exception_type(QuotaExhaustedError),
     )
     async def _analyze_item(self, item: ContentItem) -> None:
         """Analyze a single content item.
