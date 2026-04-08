@@ -84,7 +84,7 @@ class HackerNewsScraper(BaseScraper):
             return None
 
     async def _fetch_comments(self, comment_ids: List[int]) -> List[dict]:
-        """Fetch multiple comments concurrently."""
+        """Fetch top-level comments and their top replies concurrently."""
         if not comment_ids:
             return []
 
@@ -92,10 +92,35 @@ class HackerNewsScraper(BaseScraper):
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         comments = []
+        reply_tasks = []
         for r in results:
             if isinstance(r, dict) and r.get("text") and not r.get("deleted") and not r.get("dead"):
                 comments.append(r)
+                # Fetch top 3 replies for each comment
+                reply_ids = r.get("kids", [])[:3]
+                reply_tasks.append(self._fetch_replies(reply_ids))
+            else:
+                reply_tasks.append(self._fetch_replies([]))
+
+        all_replies = await asyncio.gather(*reply_tasks, return_exceptions=True)
+        for comment, replies in zip(comments, all_replies):
+            comment["_replies"] = replies if isinstance(replies, list) else []
+
         return comments
+
+    async def _fetch_replies(self, reply_ids: List[int]) -> List[dict]:
+        """Fetch reply comments (one level deep)."""
+        if not reply_ids:
+            return []
+
+        tasks = [self._fetch_story(rid) for rid in reply_ids]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        replies = []
+        for r in results:
+            if isinstance(r, dict) and r.get("text") and not r.get("deleted") and not r.get("dead"):
+                replies.append(r)
+        return replies
 
     def _parse_story(self, story: dict, comments: List[dict]) -> ContentItem:
         story_id = story["id"]
@@ -120,6 +145,15 @@ class HackerNewsScraper(BaseScraper):
                 if len(text) > 800:
                     text = text[:797] + "..."
                 parts.append(f"[{commenter}]: {text}")
+
+                # Include threaded replies
+                for reply in c.get("_replies", []):
+                    r_author = reply.get("by", "anon")
+                    r_text = reply.get("text", "")
+                    r_text = re.sub(r'<[^>]+>', ' ', r_text).strip()
+                    if len(r_text) > 800:
+                        r_text = r_text[:797] + "..."
+                    parts.append(f"  ↳ [{r_author}] (replying to {commenter}): {r_text}")
 
         content = "\n\n".join(parts)
         hn_discussion_url = f"https://news.ycombinator.com/item?id={story_id}"
