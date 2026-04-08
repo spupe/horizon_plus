@@ -202,13 +202,45 @@ class DailySummarizer:
                     p_title = p.get("title", p["source"])
                     lines.append(f"- [{p['source']}: {p_title}]({p['url']})")
 
-        sources = meta.get("sources") or []
-        if sources:
-            items_html = "".join(f'<li><a href="{s["url"]}">{s["title"]}</a></li>\n' for s in sources)
-            lines += [
-                "",
-                f'<details><summary>{labels["references"]}</summary>\n<ul>\n{items_html}\n</ul>\n</details>',
-            ]
+        # Source attribution block
+        source_links = []
+
+        # Primary article URL (already in the title link, but repeat for clarity)
+        source_links.append(f"- [{item.title[:80]}]({url})")
+
+        # Discussion thread URLs (HN, Reddit)
+        discussion_url = meta.get("discussion_url")
+        if discussion_url and discussion_url != str(item.url):
+            source_label = source_type
+            if source_type == "hackernews":
+                source_label = "Hacker News discussion"
+            elif source_type == "reddit":
+                source_label = f"Reddit discussion (r/{meta.get('subreddit', '')})"
+            source_links.append(f"- [{source_label}]({discussion_url})")
+
+        # Multi-source: show all source URLs
+        if is_multi:
+            perspectives = meta.get("source_perspectives", [])
+            for p in perspectives:
+                p_url = p.get("url", "")
+                if p_url and p_url != str(item.url):
+                    disc = p.get("discussion_url", "")
+                    p_label = p.get("source", p.get("source_type", ""))
+                    if disc and disc != p_url:
+                        source_links.append(f"- [{p_label} discussion]({disc})")
+                    else:
+                        p_title = p.get("title", p_label)[:80]
+                        source_links.append(f"- [{p_label}: {p_title}]({p_url})")
+
+        # Web search references
+        web_sources = meta.get("sources") or []
+        for s in web_sources:
+            source_links.append(f"- [{s['title']}]({s['url']})")
+
+        if source_links:
+            lines.append("")
+            lines.append(f"**{labels['source']}s**:")
+            lines.extend(source_links)
 
         if item.ai_tags:
             tags_str = ", ".join([f"`#{t}`" for t in item.ai_tags])
