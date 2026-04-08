@@ -13,7 +13,7 @@ from ..models import ContentItem, SourceType, HackerNewsConfig
 logger = logging.getLogger(__name__)
 
 # Max top-level comments to fetch per story
-TOP_COMMENTS_LIMIT = 5
+TOP_COMMENTS_LIMIT = 10
 
 
 class HackerNewsScraper(BaseScraper):
@@ -117,8 +117,8 @@ class HackerNewsScraper(BaseScraper):
                 # Strip HTML tags roughly
                 text = re.sub(r'<[^>]+>', ' ', text).strip()
                 # Truncate very long comments
-                if len(text) > 500:
-                    text = text[:497] + "..."
+                if len(text) > 800:
+                    text = text[:797] + "..."
                 parts.append(f"[{commenter}]: {text}")
 
         content = "\n\n".join(parts)
