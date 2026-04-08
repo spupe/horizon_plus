@@ -1,7 +1,8 @@
-"""Reddit scraper implementation."""
+"""Reddit scraper implementation using OAuth API."""
 
 import asyncio
 import logging
+import os
 import re
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -13,22 +14,57 @@ from ..models import ContentItem, RedditConfig, RedditSubredditConfig, RedditUse
 
 logger = logging.getLogger(__name__)
 
-REDDIT_BASE = "https://old.reddit.com"
-USER_AGENT = (
-    "Mozilla/5.0 (compatible; Horizon/1.0; +https://github.com/spupe/horizon_plus)"
-)
+OAUTH_TOKEN_URL = "https://www.reddit.com/api/v1/access_token"
+OAUTH_API_BASE = "https://oauth.reddit.com"
+PUBLIC_API_BASE = "https://www.reddit.com"
+USER_AGENT = "Horizon:1.0 (by /u/horizon_aggregator; +https://github.com/spupe/horizon_plus)"
 
 
 class RedditScraper(BaseScraper):
-    """Scraper for Reddit posts and comments."""
+    """Scraper for Reddit posts and comments via OAuth or public API."""
 
     def __init__(self, config: RedditConfig, http_client: httpx.AsyncClient):
         super().__init__(config.model_dump(), http_client)
         self.reddit_config = config
+        self._access_token: Optional[str] = None
+        self._api_base = PUBLIC_API_BASE
+
+    async def _authenticate(self) -> None:
+        """Obtain an OAuth access token using app-only (client_credentials) flow.
+
+        Requires REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET environment variables.
+        If not set, falls back to public API (may be blocked from server IPs).
+        """
+        client_id = os.environ.get("REDDIT_CLIENT_ID", "")
+        client_secret = os.environ.get("REDDIT_CLIENT_SECRET", "")
+
+        if not client_id or not client_secret:
+            logger.info("Reddit OAuth credentials not set, using public API (may be blocked)")
+            return
+
+        try:
+            response = await self.client.post(
+                OAUTH_TOKEN_URL,
+                auth=(client_id, client_secret),
+                data={"grant_type": "client_credentials"},
+                headers={"User-Agent": USER_AGENT},
+            )
+            response.raise_for_status()
+            data = response.json()
+            self._access_token = data.get("access_token")
+            if self._access_token:
+                self._api_base = OAUTH_API_BASE
+                logger.info("Reddit OAuth authenticated successfully")
+            else:
+                logger.warning("Reddit OAuth response missing access_token")
+        except Exception as e:
+            logger.warning("Reddit OAuth failed, falling back to public API: %s", e)
 
     async def fetch(self, since: datetime) -> List[ContentItem]:
         if not self.config.get("enabled", True):
             return []
+
+        await self._authenticate()
 
         tasks = []
         for sub_cfg in self.reddit_config.subreddits:
@@ -55,7 +91,7 @@ class RedditScraper(BaseScraper):
         if cfg.sort in ("top", "controversial"):
             params["t"] = cfg.time_filter
 
-        url = f"{REDDIT_BASE}/r/{cfg.subreddit}/{cfg.sort}.json"
+        url = f"{self._api_base}/r/{cfg.subreddit}/{cfg.sort}.json"
         data = await self._reddit_get(url, params)
         if not data:
             return []
@@ -68,7 +104,7 @@ class RedditScraper(BaseScraper):
 
     async def _fetch_user(self, cfg: RedditUserConfig, since: datetime) -> List[ContentItem]:
         params = {"limit": min(cfg.fetch_limit, 100), "sort": cfg.sort, "raw_json": 1}
-        url = f"{REDDIT_BASE}/user/{cfg.username}/submitted.json"
+        url = f"{self._api_base}/user/{cfg.username}/submitted.json"
         data = await self._reddit_get(url, params)
         if not data:
             return []
@@ -125,7 +161,7 @@ class RedditScraper(BaseScraper):
 
     async def _fetch_comments(self, subreddit: str, post_id: str) -> List[dict]:
         fetch_limit = self.reddit_config.fetch_comments
-        url = f"{REDDIT_BASE}/r/{subreddit}/comments/{post_id}.json"
+        url = f"{self._api_base}/r/{subreddit}/comments/{post_id}.json"
         params = {"limit": fetch_limit, "depth": 1, "sort": "top", "raw_json": 1}
 
         data = await self._reddit_get(url, params)
@@ -198,6 +234,8 @@ class RedditScraper(BaseScraper):
 
     async def _reddit_get(self, url: str, params: dict) -> Optional[dict]:
         headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+        if self._access_token:
+            headers["Authorization"] = f"Bearer {self._access_token}"
         try:
             response = await self.client.get(url, params=params, headers=headers, follow_redirects=True)
             if response.status_code == 429:
