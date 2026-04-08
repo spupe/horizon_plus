@@ -88,21 +88,24 @@ Provide EACH text field in BOTH English and Chinese. Use the following key namin
 - whats_new_en / whats_new_zh
 - why_it_matters_en / why_it_matters_zh
 - key_details_en / key_details_zh
-- background_en / background_zh
 - community_discussion_en / community_discussion_zh
 
 Field definitions:
 0. **title** (one short phrase, ≤15 words): A clear, accurate headline for the news item.
 
-1. **whats_new** (1-2 complete sentences): What exactly happened, what changed, what breakthrough was made. Be specific — mention names, versions, numbers, dates when available.
+1. **whats_new** (2-4 complete sentences): What exactly happened, what changed, what breakthrough was made. Be specific — mention names, versions, numbers, dates when available. Attribute key claims to their source when possible (e.g., "According to a Hacker News post...", "As reported by The Guardian...").
 
-2. **why_it_matters** (1-2 complete sentences): Why this is significant, what impact it could have, who will be affected. Connect to the broader ecosystem or industry trends.
+2. **why_it_matters** (2-4 complete sentences): Why this is significant, what impact it could have, who will be affected. Connect to the broader ecosystem or industry trends.
 
-3. **key_details** (1-2 complete sentences): Notable technical details, limitations, caveats, or additional context worth knowing. Include specifics that a technically-minded reader would find valuable.
+3. **key_details** (2-4 complete sentences): Notable technical details, limitations, caveats, or additional context worth knowing. Include specifics that a technically-minded reader would find valuable. When citing specific facts or claims, indicate which source they come from.
 
-4. **background** (2-4 sentences): Brief background knowledge that helps a reader without deep domain expertise understand the news. Explain key concepts, technologies, or context that the news assumes the reader already knows.
-
-5. **community_discussion** (1-3 sentences): If community comments are provided, summarize the overall sentiment and key viewpoints from the discussion — agreements, disagreements, concerns, additional insights, or notable counterarguments. If no comments are provided, return an empty string.
+4. **community_discussion** (4-8 sentences): REQUIRED when community comments are provided — this is a critical section. Analyze the social media discussion thoroughly:
+   - Lead with the **prevalent sentiment** (positive, negative, mixed, skeptical, etc.) and overall tone of the community response.
+   - Highlight the **most valuable and actionable information** shared in comments — tips, workarounds, configuration advice, insider knowledge, or corrections to the original story.
+   - Note **notable participants** (e.g., project maintainers, company employees, domain experts) and summarize what they said.
+   - Include **direct quotes** from the most insightful or representative comments, attributed to the commenter by username (e.g., 'As user "jdoe" noted: "direct quote here"').
+   - Mention **key disagreements or debates** in the discussion.
+   If no comments are provided, return an empty string.
 
 **CRITICAL — Language rules (MUST follow):**
 - All *_en fields MUST be written in English.
@@ -111,10 +114,9 @@ Field definitions:
 Guidelines:
 - EVERY field (except community_discussion when no comments exist) must contain at least one complete sentence — no field may be empty or contain just a phrase
 - Base your explanation on the provided content and web search results — do NOT fabricate information
-- ONLY explain concepts and terms that are explicitly mentioned in the title, summary, or content
 - Use the web search results to ensure accuracy, especially for recent projects, tools, or events
-- If the news is self-explanatory and needs no background, return an empty string for both background fields
-- For **sources**: pick 1-3 URLs from the Web Search Results that you actually relied on for the background fields. Only use URLs that appear verbatim in the search results above — do not invent or modify URLs.
+- For **sources**: pick 1-3 URLs from the Web Search Results that you actually relied on. Only use URLs that appear verbatim in the search results above — do not invent or modify URLs.
+- The community_discussion field is extremely important — do NOT water it down into a generic summary. Extract the most useful, specific, and actionable information from comments. Readers rely on this to learn things they cannot get from the article alone.
 """
 
 CROSS_SOURCE_SYNTHESIS_SYSTEM = """You are a senior news analyst who synthesizes coverage of the same story from multiple sources into a unified, balanced overview.
@@ -172,15 +174,13 @@ Respond with valid JSON only. Each _en field must be in English; each _zh field 
 {{
   "title_en": "<short headline in English, ≤15 words>",
   "title_zh": "<用中文写一个简短标题，不超过15个词>",
-  "whats_new_en": "<1-2 sentences in English>",
-  "whats_new_zh": "<用中文写1-2句话>",
-  "why_it_matters_en": "<1-2 sentences in English>",
-  "why_it_matters_zh": "<用中文写1-2句话>",
-  "key_details_en": "<1-2 sentences in English>",
-  "key_details_zh": "<用中文写1-2句话>",
-  "background_en": "<2-4 sentences in English, or empty string>",
-  "background_zh": "<用中文写2-4句话，或空字符串>",
-  "community_discussion_en": "<1-3 sentences in English, or empty string>",
-  "community_discussion_zh": "<用中文写1-3句话，或空字符串>",
+  "whats_new_en": "<2-4 sentences in English>",
+  "whats_new_zh": "<用中文写2-4句话>",
+  "why_it_matters_en": "<2-4 sentences in English>",
+  "why_it_matters_zh": "<用中文写2-4句话>",
+  "key_details_en": "<2-4 sentences in English>",
+  "key_details_zh": "<用中文写2-4句话>",
+  "community_discussion_en": "<4-8 sentences in English with direct quotes, or empty string>",
+  "community_discussion_zh": "<用中文写4-8句话并包含直接引用，或空字符串>",
   "sources": ["<url from search results>", "..."]
 }}"""

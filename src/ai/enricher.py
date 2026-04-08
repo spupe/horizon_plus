@@ -138,7 +138,7 @@ class ContentEnricher:
             if "--- Top Comments ---" in item.content:
                 main, comments_part = item.content.split("--- Top Comments ---", 1)
                 content_text = main.strip()[:4000]
-                comments_text = comments_part.strip()[:2000]
+                comments_text = comments_part.strip()[:4000]
             else:
                 content_text = item.content[:4000]
 
@@ -200,10 +200,6 @@ class ContentEnricher:
             if parts:
                 item.metadata[f"detailed_summary_{lang}"] = " ".join(parts)
 
-            if result.get(f"background_{lang}"):
-                val = result[f"background_{lang}"]
-                item.metadata[f"background_{lang}"] = val.get("text") or str(val) if isinstance(val, dict) else str(val)
-
             if result.get(f"community_discussion_{lang}"):
                 val = result[f"community_discussion_{lang}"]
                 item.metadata[f"community_discussion_{lang}"] = val.get("text") or str(val) if isinstance(val, dict) else str(val)
@@ -220,7 +216,6 @@ class ContentEnricher:
 
         # Backward-compatible fallback fields (English as default)
         item.metadata["detailed_summary"] = item.metadata.get("detailed_summary_en", "")
-        item.metadata["background"] = item.metadata.get("background_en", "")
         item.metadata["community_discussion"] = item.metadata.get("community_discussion_en", "")
 
         # Cross-source synthesis: if this item was merged from multiple sources,

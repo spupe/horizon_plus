@@ -135,7 +135,6 @@ class DailySummarizer:
             or item.ai_summary
             or ""
         )
-        background = meta.get(f"background_{language}") or meta.get("background") or ""
         discussion = (
             meta.get(f"community_discussion_{language}")
             or meta.get("community_discussion")
@@ -145,7 +144,6 @@ class DailySummarizer:
         if language == "zh":
             title = _pangu(title)
             summary = _pangu(summary)
-            background = _pangu(background)
             discussion = _pangu(discussion)
 
         # Source line
@@ -209,10 +207,6 @@ class DailySummarizer:
                 for p in perspectives:
                     p_title = p.get("title", p["source"])
                     lines.append(f"- [{p['source']}: {p_title}]({p['url']})")
-
-        if background:
-            lines.append("")
-            lines.append(f"**{labels['background']}**: {background}")
 
         sources = meta.get("sources") or []
         if sources:
