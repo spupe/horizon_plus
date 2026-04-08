@@ -135,16 +135,10 @@ class DailySummarizer:
             or item.ai_summary
             or ""
         )
-        discussion = (
-            meta.get(f"community_discussion_{language}")
-            or meta.get("community_discussion")
-            or ""
-        )
 
         if language == "zh":
             title = _pangu(title)
             summary = _pangu(summary)
-            discussion = _pangu(discussion)
 
         # Source line
         source_type = item.source_type.value
@@ -215,10 +209,6 @@ class DailySummarizer:
                 "",
                 f'<details><summary>{labels["references"]}</summary>\n<ul>\n{items_html}\n</ul>\n</details>',
             ]
-
-        if discussion:
-            lines.append("")
-            lines.append(f"**{labels['discussion']}**: {discussion}")
 
         if item.ai_tags:
             tags_str = ", ".join([f"`#{t}`" for t in item.ai_tags])

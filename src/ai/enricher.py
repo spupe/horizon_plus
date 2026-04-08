@@ -186,23 +186,16 @@ class ContentEnricher:
             print(f"Warning: could not parse enrichment response for {item.id}, skipping enrichment")
             return
 
-        # Combine structured sub-fields into per-language detailed_summary
+        # Store narrative and title for each language
         for lang in ("en", "zh"):
             if result.get(f"title_{lang}"):
                 val = result[f"title_{lang}"]
                 item.metadata[f"title_{lang}"] = val.get("text") or str(val) if isinstance(val, dict) else str(val)
 
-            parts = []
-            for field in ("whats_new", "why_it_matters", "key_details"):
-                text = result.get(f"{field}_{lang}", "").strip()
-                if text:
-                    parts.append(text)
-            if parts:
-                item.metadata[f"detailed_summary_{lang}"] = " ".join(parts)
-
-            if result.get(f"community_discussion_{lang}"):
-                val = result[f"community_discussion_{lang}"]
-                item.metadata[f"community_discussion_{lang}"] = val.get("text") or str(val) if isinstance(val, dict) else str(val)
+            if result.get(f"narrative_{lang}"):
+                val = result[f"narrative_{lang}"]
+                text = val.get("text") or str(val) if isinstance(val, dict) else str(val)
+                item.metadata[f"detailed_summary_{lang}"] = text
 
         # Store citation sources — only URLs that actually came from our search results
         if result.get("sources") and available_urls:
@@ -214,9 +207,8 @@ class ContentEnricher:
             if valid:
                 item.metadata["sources"] = valid
 
-        # Backward-compatible fallback fields (English as default)
+        # Backward-compatible fallback field (English as default)
         item.metadata["detailed_summary"] = item.metadata.get("detailed_summary_en", "")
-        item.metadata["community_discussion"] = item.metadata.get("community_discussion_en", "")
 
         # Cross-source synthesis: if this item was merged from multiple sources,
         # generate a unified multi-perspective analysis
