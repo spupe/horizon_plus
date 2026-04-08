@@ -138,7 +138,7 @@ class ContentEnricher:
             if "--- Top Comments ---" in item.content:
                 main, comments_part = item.content.split("--- Top Comments ---", 1)
                 content_text = main.strip()[:4000]
-                comments_text = comments_part.strip()[:4000]
+                comments_text = comments_part.strip()[:8000]
             else:
                 content_text = item.content[:4000]
 

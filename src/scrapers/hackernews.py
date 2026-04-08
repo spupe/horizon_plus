@@ -13,7 +13,7 @@ from ..models import ContentItem, SourceType, HackerNewsConfig
 logger = logging.getLogger(__name__)
 
 # Max top-level comments to fetch per story
-TOP_COMMENTS_LIMIT = 10
+TOP_COMMENTS_LIMIT = 15
 
 
 class HackerNewsScraper(BaseScraper):
@@ -97,7 +97,7 @@ class HackerNewsScraper(BaseScraper):
             if isinstance(r, dict) and r.get("text") and not r.get("deleted") and not r.get("dead"):
                 comments.append(r)
                 # Fetch top 3 replies for each comment
-                reply_ids = r.get("kids", [])[:3]
+                reply_ids = r.get("kids", [])[:5]
                 reply_tasks.append(self._fetch_replies(reply_ids))
             else:
                 reply_tasks.append(self._fetch_replies([]))
