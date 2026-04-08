@@ -142,6 +142,17 @@ class ContentEnricher:
             else:
                 content_text = item.content[:4000]
 
+        # Determine comment source platform for the AI prompt
+        comment_source = item.source_type.value
+        if "--- From hackernews ---" in (item.content or "").lower():
+            comment_source = "Hacker News"
+        elif "--- From reddit ---" in (item.content or "").lower():
+            comment_source = "Reddit"
+        elif item.source_type.value == "hackernews":
+            comment_source = "Hacker News"
+        elif item.source_type.value == "reddit":
+            comment_source = "Reddit"
+
         # Step 1: AI identifies concepts to explain
         queries = await self._extract_concepts(item, content_text)
 
@@ -168,7 +179,7 @@ class ContentEnricher:
             reason=item.ai_reason or "",
             tags=", ".join(item.ai_tags) if item.ai_tags else "",
             content=content_text,
-            comments_section=f"\n**Community Comments:**\n{comments_text}" if comments_text else "",
+            comments_section=f"\n**Community Comments (from {comment_source}):**\n{comments_text}" if comments_text else "",
             web_context=web_context or "No web search results available.",
         )
 

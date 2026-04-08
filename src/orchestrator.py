@@ -347,6 +347,18 @@ class HorizonOrchestrator:
         return tokens
 
     @staticmethod
+    def _item_tokens(item: ContentItem) -> set:
+        """Extract tokens from title AND ai_summary for cross-language matching."""
+        tokens = set()
+        for text in (item.title, item.ai_summary or ""):
+            for w in re.findall(r'[a-zA-Z]{3,}', text):
+                tokens.add(w.lower())
+            cjk = re.sub(r'[^\u4e00-\u9fff]', '', text)
+            for i in range(len(cjk) - 1):
+                tokens.add(cjk[i:i + 2])
+        return tokens
+
+    @staticmethod
     def _merge_item_content(primary: ContentItem, secondary: ContentItem) -> None:
         """Append secondary's scraped content (comments) into primary."""
         if not secondary.content:
@@ -373,18 +385,29 @@ class HorizonOrchestrator:
         """
         kept: List[ContentItem] = []
         for item in items:
-            tokens = self._title_tokens(item.title)
+            title_tokens = self._title_tokens(item.title)
+            item_tokens = self._item_tokens(item)
             item_tags = set(item.ai_tags or [])
             merged_into = None
             for accepted in kept:
-                a_tokens = self._title_tokens(accepted.title)
-                union = a_tokens | tokens
-                title_sim = len(a_tokens & tokens) / len(union) if union else 0.0
+                a_title_tokens = self._title_tokens(accepted.title)
+                a_item_tokens = self._item_tokens(accepted)
+
+                # Title-only similarity (original behavior)
+                t_union = a_title_tokens | title_tokens
+                title_sim = len(a_title_tokens & title_tokens) / len(t_union) if t_union else 0.0
+
+                # Broader similarity including ai_summary (helps cross-language)
+                i_union = a_item_tokens | item_tokens
+                item_sim = len(a_item_tokens & item_tokens) / len(i_union) if i_union else 0.0
+
                 tag_overlap = len(set(accepted.ai_tags or []) & item_tags)
-                if title_sim >= threshold or (tag_overlap >= 2 and title_sim >= 0.15):
+                if (title_sim >= threshold
+                        or item_sim >= threshold
+                        or (tag_overlap >= 2 and max(title_sim, item_sim) >= 0.15)):
                     merged_into = accepted
                     self.console.print(
-                        f"   [dim]dedup: title_sim={title_sim:.2f} tag_overlap={tag_overlap}[/dim]\n"
+                        f"   [dim]dedup: title_sim={title_sim:.2f} item_sim={item_sim:.2f} tag_overlap={tag_overlap}[/dim]\n"
                         f"   [dim]  keep : {accepted.title}[/dim]\n"
                         f"   [dim]  merge: {item.title}[/dim]"
                     )
@@ -410,6 +433,7 @@ class HorizonOrchestrator:
                 "title": item.title,
                 "url": str(item.url),
                 "summary": item.ai_summary or item.title,
+                "discussion_url": item.metadata.get("discussion_url", ""),
             }
         ])
 
@@ -434,6 +458,7 @@ class HorizonOrchestrator:
             "title": secondary.title,
             "url": str(secondary.url),
             "summary": secondary.ai_summary or secondary.title,
+            "discussion_url": secondary.metadata.get("discussion_url", ""),
         })
 
     async def _enrich_important_items(self, items: List[ContentItem]) -> None:
