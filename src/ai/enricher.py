@@ -138,7 +138,7 @@ class ContentEnricher:
             if "--- Top Comments ---" in item.content:
                 main, comments_part = item.content.split("--- Top Comments ---", 1)
                 content_text = main.strip()[:4000]
-                comments_text = comments_part.strip()[:4000]
+                comments_text = comments_part.strip()[:8000]
             else:
                 content_text = item.content[:4000]
 
@@ -186,16 +186,15 @@ class ContentEnricher:
             print(f"Warning: could not parse enrichment response for {item.id}, skipping enrichment")
             return
 
-        # Store narrative and title for each language
-        for lang in ("en", "zh"):
-            if result.get(f"title_{lang}"):
-                val = result[f"title_{lang}"]
-                item.metadata[f"title_{lang}"] = val.get("text") or str(val) if isinstance(val, dict) else str(val)
+        # Store narrative and title
+        if result.get("title_en"):
+            val = result["title_en"]
+            item.metadata["title_en"] = val.get("text") or str(val) if isinstance(val, dict) else str(val)
 
-            if result.get(f"narrative_{lang}"):
-                val = result[f"narrative_{lang}"]
-                text = val.get("text") or str(val) if isinstance(val, dict) else str(val)
-                item.metadata[f"detailed_summary_{lang}"] = text
+        if result.get("narrative_en"):
+            val = result["narrative_en"]
+            text = val.get("text") or str(val) if isinstance(val, dict) else str(val)
+            item.metadata["detailed_summary_en"] = text
 
         # Store citation sources — only URLs that actually came from our search results
         if result.get("sources") and available_urls:
